@@ -1,0 +1,1 @@
+window.loadPaper=function e({sources:n,onReady:o,onFailure:r,index:d=0}){if(window.paper)return void o();if(d>=n.length)return void r?.();const i=document.createElement("script");i.src=n[d],i.onload=o,i.onerror=()=>e({sources:n,onReady:o,onFailure:r,index:d+1}),document.head.appendChild(i)};

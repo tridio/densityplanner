@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Planejamento Geometrico de Implantes Capilares</title>
+  <link rel="icon" href="assets/icons/favicon.ico" sizes="any">
+  <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="assets/icons/favicon-96x96.png" type="image/png" sizes="96x96">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css?v=20260623-batch5-1" />
+</head>
+<body>
+  <div class="app">
+    <section class="stage">
+      <canvas id="canvas" resize tabindex="0"></canvas>
+      <button class="empty-reference-dropzone" id="emptyReferenceDropzone" type="button" aria-label="Adicionar primeira imagem de referência">
+        <i data-lucide="image-plus"></i>
+        <strong>Nenhuma imagem de referência</strong>
+        <span>Arraste uma imagem para cá ou clique para escolher um arquivo</span>
+      </button>
+      <div class="reference-role-label reference-role-label-main" id="mainReferenceLabel" hidden>
+        <span>Imagem principal</span>
+      </div>
+      <div class="reference-role-label reference-role-label-support" id="supportReferenceLabel" hidden>
+        <span>Desenho e c&aacute;lculo</span>
+      </div>
+      <div class="support-column" id="supportColumn" hidden>
+        <div class="support-thumbs" id="supportThumbs" aria-label="Imagens de apoio"></div>
+      </div>
+      <div class="split-divider" id="splitDivider" hidden title="Arraste para redistribuir o espaço. Duplo clique restaura 50/50." aria-label="Ajustar divisão entre imagem principal e apoio">
+        <div class="split-divider-grip" aria-hidden="true"></div>
+      </div>
+      <div class="main-drop-target" id="mainDropTarget" hidden aria-hidden="true"></div>
+      <div class="opacity-dock" id="opacityDock" aria-label="Transparências" hidden>
+        <label class="slider-control" for="imageOpacityInput">
+          <span class="slider-label"><i data-lucide="image"></i>Imagem <strong id="imageOpacityValue">30%</strong></span>
+          <input class="image-opacity" id="imageOpacityInput" type="range" min="0" max="100" value="30" title="Transparencia da imagem de referencia">
+        </label>
+        <label class="slider-control" for="canvasOpacityInput">
+          <span class="slider-label"><i data-lucide="blend"></i>Desenho <strong id="canvasOpacityValue">100%</strong></span>
+          <input class="canvas-opacity" id="canvasOpacityInput" type="range" min="0" max="100" value="100" title="Transparencia dos elementos desenhados">
+        </label>
+      </div>
+      <div class="context-menu" id="imageContextMenu" hidden role="menu" aria-label="Opções da imagem"></div>
+      <canvas class="cursor-loupe" id="cursorLoupe" width="180" height="180" aria-hidden="true"></canvas>
+      <div class="menu-tooltip" id="menuTooltip" role="tooltip" aria-hidden="true"></div>
+      <div class="canvas-loader" id="canvasLoader" hidden role="status" aria-live="polite" aria-busy="true">
+        <div class="canvas-loader-spinner" aria-hidden="true"></div>
+        <p class="canvas-loader-text" id="canvasLoaderText">Processando imagem&hellip;</p>
+      </div>
+      <div class="toolbar" aria-label="Ferramentas de desenho">
+        <div class="toolbar-row toolbar-main-row">
+          <button class="small-button" id="fileMenuBtn" type="button" aria-haspopup="true" aria-expanded="false" title="Abrir o menu de arquivo"><i data-lucide="folder"></i><span>Arquivo</span><i data-lucide="chevron-down" class="menu-caret"></i></button>
+
+          <div class="toolbar-sep" aria-hidden="true"></div>
+
+          <button class="tool-button" data-tool="pointer" title="Ponteiro: clique para selecionar uma area; arraste para selecionar varias por retangulo"><i data-lucide="mouse-pointer-2"></i><span>Ponteiro</span></button>
+          <button class="tool-button" data-tool="hand" title="Mao: arraste para mover as imagens e o canvas (atalho: segurar Espaco)"><i data-lucide="hand"></i><span>Mão</span></button>
+          <div class="tool-split" id="pointsToolSplit">
+            <button class="tool-button active" data-tool="pointTraceStar" id="pointsToolMainBtn" title="Pontos*: clique para marcar; dobras acima do limiar viram cantos vivos (curvas separadas). Duplo clique finaliza. Use a setinha para trocar para Pontos."><i data-lucide="spline"></i><span id="pointsToolLabel">Pontos *</span></button>
+            <button class="tool-split-caret" id="pointsToolCaret" type="button" aria-haspopup="true" aria-expanded="false" title="Escolher variante de Pontos"><i data-lucide="chevron-down"></i></button>
+            <div class="tool-split-menu" id="pointsToolMenu" role="menu" hidden>
+              <button class="tool-split-option selected" type="button" role="menuitem" data-tool="pointTraceStar"><i data-lucide="spline"></i><span>Pontos *</span></button>
+              <button class="tool-split-option" type="button" role="menuitem" data-tool="pointTrace"><i data-lucide="route"></i><span>Pontos</span></button>
+            </div>
+          </div>
+          <button class="tool-button" id="lineToolBtn" data-tool="line" title="Reta: magnetismo em pontas, vertices e corpos" hidden><i data-lucide="slash"></i><span>Reta</span></button>
+          <button class="tool-button" data-tool="editTrace" title="Editar traço (N): clique num traço para ajustar os pontos. Arraste um nó para movê-lo (gruda com Magnetismo); 2× clique no corpo adiciona ponto; botão direito num nó remove; rodinha alterna canto vivo (Pontos*). Enter conclui (recalcula as áreas afetadas); Esc cancela."><i data-lucide="pen-tool"></i><span>Editar traço</span></button>
+          <button class="small-button active" id="snapToggleBtn" title="Ativar ou desativar magnetismo"><i data-lucide="magnet"></i><span>Magnetismo</span></button>
+          <button class="tool-button" data-tool="eraser" title="Borracha em cascata: remove tracos conectados e areas"><i data-lucide="eraser"></i><span>Borracha</span></button>
+          <div class="toolbar-sep" aria-hidden="true"></div>
+          <button class="tool-button" data-tool="scale" title="Tracar referencia para calculo automatico de area"><i data-lucide="ruler"></i><span>Escala</span></button>
+          <button class="small-button" id="undoBtn" title="Desfazer ultima acao"><i data-lucide="undo-2"></i><span>Desfazer</span></button>
+
+          <div class="toolbar-sep" aria-hidden="true"></div>
+
+          <button class="small-button" id="devDiagnosticBtn" title="Exportar diagnostico geometrico da imagem de apoio ativa"><i data-lucide="bug"></i><span>Diagnóstico</span></button>
+
+          <div class="active-file-badge" id="activeFileBadge" hidden>
+            <i data-lucide="file-check-2"></i>
+            <span id="activeFileName">Sem arquivo</span>
+          </div>
+        </div>
+
+        <!-- Menu de Arquivo: dropdown ancorado ao botão "Arquivo". Portado ao <body>
+             ao abrir (a .toolbar tem backdrop-filter → cria contexto de empilhamento
+             próprio que prenderia o menu sob outros elementos). -->
+        <div class="file-menu" id="fileMenu" role="menu" hidden>
+          <button class="small-button" id="clearBtn" title="Criar um novo planejamento em branco"><i data-lucide="file-plus"></i><span>Novo</span></button>
+          <button class="small-button" id="loadBtn" title="Abrir estado de arquivo"><i data-lucide="folder-open"></i><span>Abrir</span></button>
+          <button class="small-button" id="saveBtn" title="Gravar no arquivo ativo"><i data-lucide="save"></i><span>Salvar</span></button>
+          <button class="small-button" id="saveAsBtn" title="Gravar em um novo arquivo"><i data-lucide="save-all"></i><span>Salvar Como</span></button>
+          <button class="small-button" id="reportPdfBtn" title="Gerar relatorio em PDF"><i data-lucide="file-text"></i><span>Exportar Relatório</span></button>
+          <button class="small-button" id="validationBtn" title="Validar as medições: alertas por área e razão cm²/Mpx² entre apoio e principal"><i data-lucide="clipboard-check"></i><span>Validação</span></button>
+          <button class="small-button" id="autoSaveBtn" title="Ativar ou desativar salvamento automatico"><i data-lucide="refresh-cw"></i><span>Salvamento automático</span></button>
+          <button class="small-button" id="settingsBtn" title="Abrir configurações"><i data-lucide="settings"></i><span>Configurações</span></button>
+        </div>
+
+        <!-- Tamanho padrão (cm) de novas escalas. Sem UI própria: a medida real é
+             confirmada/editada no modal ao concluir ou dar duplo clique na escala. -->
+        <input id="scaleSizeInput" type="hidden" value="2">
+        <input id="imageFileInput" type="file" accept="image/*,.heic,.heif" multiple hidden>
+        <input id="loadFileInput" type="file" accept="application/json,.json" hidden>
+      </div>
+      <div class="zoom-controls" id="zoomControls" aria-label="Zoom" hidden>
+        <button class="small-button" id="zoomInBtn" title="Aproximar"><i data-lucide="zoom-in"></i></button>
+        <button class="small-button" id="zoomOutBtn" title="Afastar"><i data-lucide="zoom-out"></i></button>
+        <button class="small-button" id="fitMainBtn" title="Reenquadrar imagens"><i data-lucide="scan"></i></button>
+      </div>
+      <div class="page-nav" id="pageNav" hidden>
+        <button class="small-button" id="prevPageBtn" title="Pagina anterior"><i data-lucide="chevron-left"></i></button>
+        <span id="pageIndicator">1 / 1</span>
+        <button class="small-button" id="nextPageBtn" title="Proxima pagina"><i data-lucide="chevron-right"></i></button>
+      </div>
+      <div class="hint" id="hint">
+        Segure o clique para iniciar, arraste e solte para concluir. Na ferramenta Reta, pontos proximos de pontas, vertices ou corpos de linhas sao atraidos automaticamente.
+      </div>
+      <div class="floating-area-card" id="floatingAreaCard" aria-live="polite"></div>
+      <div class="density-panel" id="densitySamplePanel" hidden aria-live="polite">
+        <div class="density-head">
+          <span class="density-badge"><i data-lucide="scan-search"></i> Amostragem de densidade</span>
+          <button class="small-button icon-only" id="densityCloseBtn" type="button" aria-label="Cancelar"><i data-lucide="x"></i></button>
+        </div>
+        <div class="density-metrics">
+          <div class="metric"><span>Pontos</span><strong id="densityCount">0</strong></div>
+          <div class="metric"><span>Amostra cm&sup2;</span><strong id="densityArea">4,00</strong></div>
+          <div class="metric"><span>Fios/cm&sup2;</span><strong id="densityValue">0</strong></div>
+        </div>
+        <label class="density-contrast" for="densityContrastInput">
+          <span class="density-contrast-label">Contraste <button class="density-contrast-reset" id="densityContrastReset" type="button" title="Voltar ao contraste normal">Normal</button></span>
+          <input id="densityContrastInput" type="range" min="50" max="220" value="100" title="Ajuste apenas visual, nao altera o arquivo">
+        </label>
+        <p class="density-hint" id="densityHint">Arraste a borda para posicionar a janela de 4 cm&sup2;. Clique dentro para marcar cada f&oacute;liculo.</p>
+        <div class="density-actions">
+          <button class="small-button" id="densityUndoBtn" type="button"><i data-lucide="undo-2"></i><span>Desfazer ponto</span></button>
+          <button class="small-button" id="densityCancelBtn" type="button"><span>Cancelar</span></button>
+        </div>
+        <button class="density-apply" id="densityApplyBtn" type="button"><i data-lucide="check"></i><span>Aplicar densidade</span></button>
+      </div>
+      <div class="settings-modal" id="settingsModal" hidden>
+        <div class="settings-dialog" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+          <header>
+            <h2 id="settingsTitle">Configurações</h2>
+            <button class="small-button icon-only" id="settingsCloseBtn" type="button" title="Fechar sem salvar"><i data-lucide="x"></i></button>
+          </header>
+          <div class="settings-scroll" id="settingsScroll">
+          <label class="checkbox-row" for="autoResetMainInput">
+            <input id="autoResetMainInput" type="checkbox" checked>
+            <span>Reenquadrar automaticamente a imagem principal ao sair dela</span>
+          </label>
+          <div class="settings-section">
+            <h3>Barra de ferramentas</h3>
+            <label class="checkbox-row" for="lineToolVisibleInput">
+              <input id="lineToolVisibleInput" type="checkbox">
+              <span>Exibir a ferramenta Reta na barra</span>
+            </label>
+          </div>
+          <div class="settings-section">
+            <h3>Seleção de áreas</h3>
+            <label class="checkbox-row" for="pointerOverrideInput">
+              <input id="pointerOverrideInput" type="checkbox" checked>
+              <span>Virar Ponteiro automaticamente sobre uma área (qualquer ferramenta)</span>
+            </label>
+            <label class="number-row" id="pointerOverrideThresholdRow" for="pointerOverrideThresholdInput">
+              <span>Limiar para virar Ponteiro <span style="display:block;color:var(--faint);font-weight:600;text-transform:none;letter-spacing:0">distância em px que o cursor pode entrar na área antes de virar Ponteiro</span></span>
+              <input id="pointerOverrideThresholdInput" type="number" min="0" max="200" step="1" value="8" />
+            </label>
+          </div>
+          <div class="settings-section">
+            <h3>Pontinhos</h3>
+            <label class="number-row" for="dotSizeInput">
+              <span>Tamanho dos pontos</span>
+              <input id="dotSizeInput" type="number" min="1" max="8" step="1" value="2" />
+            </label>
+            <label class="checkbox-row" for="currentHairDotsVisibleInput">
+              <input id="currentHairDotsVisibleInput" type="checkbox" checked>
+              <span>Exibir fios existentes (densidade atual)</span>
+            </label>
+            <label class="color-row" for="currentHairDotColorInput">
+              <span>Cor dos fios existentes</span>
+              <input id="currentHairDotColorInput" type="color" value="#8f98a6">
+            </label>
+            <label class="checkbox-row" for="implantHairDotsVisibleInput">
+              <input id="implantHairDotsVisibleInput" type="checkbox" checked>
+              <span>Exibir fios a implantar</span>
+            </label>
+            <label class="color-row" for="implantHairDotColorInput">
+              <span>Cor dos fios a implantar</span>
+              <input id="implantHairDotColorInput" type="color" value="#8f98a6">
+            </label>
+          </div>
+          <div class="settings-section">
+            <h3>Ferramenta Pontos*</h3>
+            <label class="number-row" for="pointTraceStarAngleInput">
+              <span>Ângulo de canto vivo <span style="display:block;color:var(--faint);font-weight:600;text-transform:none;letter-spacing:0">dobra (em graus) acima da qual o vértice quebra a curva em um novo traço</span></span>
+              <input id="pointTraceStarAngleInput" type="number" min="5" max="175" step="1" value="45" />
+            </label>
+            <label class="number-row" for="pointTraceStarMinSegmentInput">
+              <span>Distância mínima entre pontos <span style="display:block;color:var(--faint);font-weight:600;text-transform:none;letter-spacing:0">pontos mais próximos que isto (px na tela) não disparam o canto vivo</span></span>
+              <input id="pointTraceStarMinSegmentInput" type="number" min="0" max="500" step="1" value="100" />
+            </label>
+          </div>
+          <div class="settings-section">
+            <h3>Áreas fantasma</h3>
+            <label class="number-row" for="selfSupportGhostMatchInput">
+              <span>Coincidência mínima para atribuir <span style="display:block;color:var(--faint);font-weight:600;text-transform:none;letter-spacing:0">% de sobreposição (relativo à menor área) para vincular automaticamente uma área do apoio 0 a um alvo fantasma da principal</span></span>
+              <input id="selfSupportGhostMatchInput" type="number" min="1" max="100" step="1" value="70" />
+            </label>
+          </div>
+          <div class="settings-section">
+            <h3>Números</h3>
+            <label class="select-row" for="numberFormatSelect">
+              <span>Formato de números <span style="display:block;color:var(--faint);font-weight:600;text-transform:none;letter-spacing:0">separador de milhar e decimal</span></span>
+              <select id="numberFormatSelect">
+                <option value="pt-BR">Brasil: 1.234,56</option>
+                <option value="en-US">EUA: 1,234.56</option>
+                <option value="plain">Sem separador: 1234.56</option>
+              </select>
+            </label>
+          </div>
+          <div class="settings-actions">
+            <button class="small-button" id="exportSettingsBtn" type="button"><i data-lucide="download"></i><span>Exportar configurações</span></button>
+            <button class="small-button" id="importSettingsBtn" type="button"><i data-lucide="upload"></i><span>Importar configurações</span></button>
+            <input id="importSettingsInput" type="file" accept="application/json,.json" hidden>
+          </div>
+          </div>
+          <div class="dialog-actions settings-footer">
+            <button class="small-button" id="settingsCancelBtn" type="button"><span>Cancelar</span></button>
+            <button class="small-button primary-button" id="settingsSaveBtn" type="button"><i data-lucide="check"></i><span>Salvar</span></button>
+          </div>
+        </div>
+      </div>
+      <div class="unsaved-modal" id="unsavedModal" hidden>
+        <div class="unsaved-dialog" role="dialog" aria-modal="true" aria-labelledby="unsavedTitle" aria-describedby="unsavedDescription">
+          <header>
+            <h2 id="unsavedTitle">Modifica&ccedil;&otilde;es n&atilde;o salvas</h2>
+          </header>
+          <p id="unsavedDescription">Existem modifica&ccedil;&otilde;es n&atilde;o salvas. Deseja salvar antes de continuar?</p>
+          <div class="dialog-actions">
+            <button class="small-button primary-button" id="unsavedSaveBtn" type="button"><i data-lucide="save"></i><span>Salvar</span></button>
+            <button class="small-button" id="unsavedDiscardBtn" type="button"><i data-lucide="x-circle"></i><span>N&atilde;o salvar</span></button>
+          </div>
+        </div>
+      </div>
+      <div class="image-picker-modal" id="newPageImageModal" hidden>
+        <div class="image-picker-dialog" role="dialog" aria-modal="true" aria-labelledby="newPageImageTitle">
+          <header>
+            <h2 id="newPageImageTitle">Nova p&aacute;gina principal</h2>
+            <button class="small-button icon-only" id="newPageImageCloseBtn" type="button" aria-label="Fechar"><i data-lucide="x"></i></button>
+          </header>
+          <button class="image-picker-dropzone" id="newPageImageDropzone" type="button">
+            <i data-lucide="image-plus"></i>
+            <strong>Selecione a imagem principal</strong>
+            <span>Arraste uma imagem para c&aacute; ou clique para escolher no computador</span>
+          </button>
+        </div>
+      </div>
+      <div class="settings-modal" id="scaleCmModal" hidden>
+        <div class="settings-dialog scale-cm-dialog" role="dialog" aria-modal="true" aria-labelledby="scaleCmTitle">
+          <header>
+            <h2 id="scaleCmTitle">Medida da escala</h2>
+            <button class="small-button icon-only" id="scaleCmCloseBtn" type="button" aria-label="Fechar"><i data-lucide="x"></i></button>
+          </header>
+          <p>Confirme quantos cent&iacute;metros tem a escala desenhada na imagem de apoio.</p>
+          <label class="number-row" for="scaleCmInput">
+            <span>Tamanho da escala (cm)</span>
+            <input id="scaleCmInput" type="number" min="0.1" step="0.1" value="2">
+          </label>
+          <div class="dialog-actions">
+            <button class="small-button" id="scaleCmCancelBtn" type="button"><span>Cancelar</span></button>
+            <button class="small-button primary-button" id="scaleCmConfirmBtn" type="button"><i data-lucide="calculator"></i><span>Calcular &aacute;rea</span></button>
+          </div>
+        </div>
+      </div>
+      <div class="settings-modal" id="scaleEditModal" hidden>
+        <div class="settings-dialog scale-cm-dialog" role="dialog" aria-modal="true" aria-labelledby="scaleEditTitle">
+          <header>
+            <h2 id="scaleEditTitle">Editar medida da escala</h2>
+            <button class="small-button icon-only" id="scaleEditCloseBtn" type="button" aria-label="Fechar"><i data-lucide="x"></i></button>
+          </header>
+          <p>Defina quantos cent&iacute;metros esta escala representa.</p>
+          <label class="number-row" for="scaleEditInput">
+            <span>Tamanho da escala (cm)</span>
+            <input id="scaleEditInput" type="number" min="0.1" step="0.1" value="2">
+          </label>
+          <label class="scale-edit-recalc" id="scaleEditRecalcRow" hidden>
+            <input id="scaleEditRecalc" type="checkbox" checked>
+            <span id="scaleEditRecalcLabel">Atualizar as &aacute;reas j&aacute; calculadas com esta escala.</span>
+          </label>
+          <div class="dialog-actions">
+            <button class="small-button" id="scaleEditCancelBtn" type="button"><span>Cancelar</span></button>
+            <button class="small-button primary-button" id="scaleEditConfirmBtn" type="button"><i data-lucide="check"></i><span>Salvar</span></button>
+          </div>
+        </div>
+      </div>
+      <div class="settings-modal" id="scaleResizeModal" hidden>
+        <div class="settings-dialog scale-cm-dialog" role="dialog" aria-modal="true" aria-labelledby="scaleResizeTitle">
+          <header>
+            <h2 id="scaleResizeTitle">Recalcular &aacute;reas?</h2>
+            <button class="small-button icon-only" id="scaleResizeCloseBtn" type="button" aria-label="Fechar"><i data-lucide="x"></i></button>
+          </header>
+          <p id="scaleResizeText">A escala foi redimensionada. Atualizar as &aacute;reas j&aacute; calculadas com ela?</p>
+          <div class="dialog-actions">
+            <button class="small-button" id="scaleResizeCancelBtn" type="button"><span>N&atilde;o</span></button>
+            <button class="small-button primary-button" id="scaleResizeConfirmBtn" type="button"><i data-lucide="check"></i><span>Sim, recalcular</span></button>
+          </div>
+        </div>
+      </div>
+      <div class="settings-modal" id="areaRecalcModal" hidden>
+        <div class="settings-dialog scale-cm-dialog" role="dialog" aria-modal="true" aria-labelledby="areaRecalcTitle">
+          <header>
+            <h2 id="areaRecalcTitle">Recalcular &aacute;rea ajustada</h2>
+            <button class="small-button icon-only" id="areaRecalcCloseBtn" type="button" aria-label="Fechar"><i data-lucide="x"></i></button>
+          </header>
+          <p id="areaRecalcText">A &aacute;rea foi alterada. O que deseja fazer?</p>
+          <div class="dialog-actions">
+            <button class="small-button" id="areaRecalcKeepUnitsBtn" type="button"><span>Recalcular Densidade Final (mant&eacute;m unidades foliculares a implantar)</span></button>
+            <button class="small-button primary-button" id="areaRecalcKeepDensityBtn" type="button"><i data-lucide="check"></i><span>Recalcular Unidades a Implantar (mant&eacute;m Densidade Final)</span></button>
+          </div>
+        </div>
+      </div>
+      <div class="settings-modal" id="validationModal" hidden>
+        <div class="settings-dialog validation-dialog" role="dialog" aria-modal="true" aria-labelledby="validationTitle">
+          <header>
+            <h2 id="validationTitle">Valida&ccedil;&atilde;o</h2>
+            <button class="small-button icon-only" id="validationCloseBtn" type="button" aria-label="Fechar"><i data-lucide="x"></i></button>
+          </header>
+          <p class="validation-intro">Para cada &aacute;rea, <strong>&iacute;ndice = cm&sup2; (apoio) / Mpx&sup2; (principal)</strong>. O <strong>fator de desvio</strong> &eacute; o &iacute;ndice dividido pela <strong>mediana</strong> dos &iacute;ndices. N&iacute;veis: sem alerta entre 0,5 e 2; leve &lt;0,5 ou &gt;2; forte &lt;1/3 ou &gt;3; cr&iacute;tico &lt;0,2 ou &gt;5.</p>
+          <section class="validation-alerts" id="validationAlerts" aria-label="Alertas por &aacute;rea"></section>
+          <div class="validation-table-wrap">
+            <table class="validation-table">
+              <thead>
+                <tr>
+                  <th>&Aacute;rea</th>
+                  <th>cm&sup2; (apoio)</th>
+                  <th>Mpx&sup2; (principal)</th>
+                  <th>&Iacute;ndice (cm&sup2;/Mpx&sup2;)</th>
+                  <th>Fator (&times;mediana)</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="validationTableBody"></tbody>
+            </table>
+          </div>
+          <p class="validation-stats" id="validationStats"></p>
+          <p class="validation-empty" id="validationEmpty" hidden>Nenhuma &aacute;rea para validar.</p>
+          <div class="dialog-actions">
+            <button class="small-button primary-button" id="validationDoneBtn" type="button"><i data-lucide="check"></i><span>Fechar</span></button>
+          </div>
+        </div>
+      </div>
+      <div class="settings-modal" id="autoTraceModal" hidden>
+        <div class="settings-dialog autotrace-dialog" role="dialog" aria-modal="true" aria-labelledby="autoTraceTitle">
+          <header>
+            <h2 id="autoTraceTitle">Coloca&ccedil;&atilde;o dos pontos</h2>
+            <button class="small-button icon-only" id="autoTraceCloseBtn" type="button" aria-label="Fechar"><i data-lucide="x"></i></button>
+          </header>
+          <p>Em qual lado da linha detectada (ou no meio) os pontos devem cair, em cada trecho do tra&ccedil;o?</p>
+          <div class="autotrace-prefs" id="autoTracePrefs" role="radiogroup">
+            <div class="pref-group">
+              <span class="pref-group-title">Vertical</span>
+              <div class="pref-options">
+                <button class="pref-option" data-pref="up" type="button" role="radio" aria-checked="false"><i data-lucide="arrow-up"></i><span>Cima</span></button>
+                <button class="pref-option" data-pref="down" type="button" role="radio" aria-checked="false"><i data-lucide="arrow-down"></i><span>Baixo</span></button>
+              </div>
+            </div>
+            <div class="pref-group">
+              <span class="pref-group-title">Horizontal</span>
+              <div class="pref-options">
+                <button class="pref-option" data-pref="left" type="button" role="radio" aria-checked="false"><i data-lucide="arrow-left"></i><span>Esquerda</span></button>
+                <button class="pref-option" data-pref="right" type="button" role="radio" aria-checked="false"><i data-lucide="arrow-right"></i><span>Direita</span></button>
+              </div>
+            </div>
+            <div class="pref-group">
+              <span class="pref-group-title">Curva</span>
+              <div class="pref-options">
+                <button class="pref-option" data-pref="curve-external" type="button" role="radio" aria-checked="false"><i data-lucide="expand"></i><span>Externo</span></button>
+                <button class="pref-option" data-pref="curve-internal" type="button" role="radio" aria-checked="false"><i data-lucide="shrink"></i><span>Interno</span></button>
+              </div>
+            </div>
+            <div class="pref-group">
+              <span class="pref-group-title">Meio</span>
+              <div class="pref-options">
+                <button class="pref-option active" data-pref="central" type="button" role="radio" aria-checked="true"><i data-lucide="circle-dot"></i><span>Central</span></button>
+              </div>
+            </div>
+          </div>
+          <div class="dialog-actions">
+            <button class="small-button" id="autoTraceCancelBtn" type="button"><span>Cancelar</span></button>
+            <button class="small-button primary-button" id="autoTraceConfirmBtn" type="button"><i data-lucide="route"></i><span>Detectar pontos</span></button>
+          </div>
+        </div>
+      </div>
+      <div class="settings-modal" id="noScaleModal" hidden>
+        <div class="settings-dialog scale-cm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="noScaleTitle" aria-describedby="noScaleDesc">
+          <header>
+            <h2 id="noScaleTitle">Defina uma escala primeiro</h2>
+          </header>
+          <p id="noScaleDesc">Antes de desenhar, trace uma <strong>escala</strong> na imagem de apoio (ferramenta Escala). Assim cada &aacute;rea desenhada tem o seu valor em cm&sup2; calculado automaticamente pela escala vigente.</p>
+          <div class="dialog-actions">
+            <button class="small-button primary-button" id="noScaleDefineBtn" type="button"><i data-lucide="ruler"></i><span>Definir escala</span></button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <aside>
+      <div class="summary">
+        <div class="metric"><span>Areas</span><strong id="areaCount">0</strong></div>
+        <div class="metric"><span>cm2</span><strong id="totalCm2">0</strong></div>
+        <div class="metric"><span>Unidades</span><strong id="totalHairs">0</strong></div>
+      </div>
+
+      <div class="area-list" id="areaList">
+        <div class="empty">Desenhe um ciclo fechado para criar a primeira &Aacute;rea.</div>
+      </div>
+    </aside>
+  </div>
+  <script src="js/config.js?v=20260609-cleanup-1"></script>
+  <script src="js/paper-loader.js?v=20260601-pencil-loop-fix"></script>
+  <script src="js/utils.js?v=20260615-final-density-2"></script>
+  <script src="js/performance-monitor.js?v=20260614-loaf-1"></script>
+  <script src="js/heic-converter.js?v=20260614-heic-3"></script>
+  <script src="js/geometry-utils.js?v=20260609-cleanup-1"></script>
+  <script src="js/app-state.js?v=20260623-batch2-1"></script>
+  <script src="js/render-layers.js?v=20260602-projections-1"></script>
+  <script src="js/toolbar-tabs.js?v=20260622-menu-flat-1"></script>
+  <script src="js/io-state.js?v=20260623-page-isolation-2"></script>
+  <script src="js/area-model.js?v=20260623-skin-hue-1"></script>
+  <script src="js/local-prefs.js?v=20260610-split-divider-1"></script>
+  <script src="js/path-styles.js?v=20260623-batch5-1"></script>
+  <script src="js/cursor-loupe-controller.js?v=20260622-loupe-edit-2"></script>
+  <script src="js/io-controller.js?v=20260623-batch7-1"></script>
+  <script src="js/scale-controller.js?v=20260624-supportclip-1"></script>
+  <script src="js/viewport-controller.js?v=20260622-edit-trace-1"></script>
+  <script src="js/navigation-controller.js?v=20260609-navigation-1"></script>
+  <script src="js/floating-card.js?v=20260601-refactor-8"></script>
+  <script src="js/reference-image-controller.js?v=20260624-selpattern-1"></script>
+  <script src="js/diagnostic-controller.js?v=20260613-perf-diag-1"></script>
+  <script src="js/report-controller.js?v=20260623-batch6-1"></script>
+  <script src="js/area-visual-controller.js?v=20260624-supportclip-1"></script>
+  <script src="js/stroke-geometry-controller.js?v=20260623-page-scope-1"></script>
+  <script src="js/area-panel-controller.js?v=20260623-batch-recalc-1"></script>
+  <script src="js/auto-trace-controller.js?v=20260611-autotrace-1"></script>
+  <script src="js/density-sample-controller.js?v=20260612-batch-1"></script>
+  <script src="js/drawing-tools-controller.js?v=20260623-ptrmag-1"></script>
+  <script src="js/event-bindings.js?v=20260623-noctx-1"></script>
+  <script src="js/history-controller.js?v=20260623-page-isolation-2"></script>
+  <script src="js/projection-controller.js?v=20260624-projscale-1"></script>
+  <script src="js/validation-controller.js?v=20260623-batch5-1"></script>
+  <script src="js/app.js?v=20260624-supportclip-1"></script>
+</body>
+</html>

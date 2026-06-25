@@ -1,0 +1,1 @@
+window.HAIR_PLANNER_GEOMETRY={boundsNear:function(t,o,n=0){return t.left-n<=o.right&&t.right+n>=o.left&&t.top-n<=o.bottom&&t.bottom+n>=o.top}};

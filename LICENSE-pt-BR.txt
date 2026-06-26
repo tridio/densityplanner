@@ -1,0 +1,24 @@
+Licenca MIT — traducao para o portugues (PT-BR)
+
+AVISO: Esta e uma traducao de cortesia, NAO oficial. Em caso de duvida ou
+divergencia, prevalece o texto original em ingles, disponivel no arquivo LICENSE.
+
+Copyright (c) 2026 guto202@gmail.com
+
+A presente permissao e concedida, gratuitamente, a qualquer pessoa que obtenha uma
+copia deste software e dos arquivos de documentacao associados (o "Software"), para
+negociar o Software sem restricao, incluindo, sem limitacao, os direitos de usar,
+copiar, modificar, mesclar, publicar, distribuir, sublicenciar e/ou vender copias do
+Software, e de permitir que as pessoas a quem o Software e fornecido o facam, sujeito
+as seguintes condicoes:
+
+O aviso de copyright acima e este aviso de permissao deverao ser incluidos em todas
+as copias ou partes substanciais do Software.
+
+O SOFTWARE E FORNECIDO "COMO ESTA", SEM GARANTIA DE QUALQUER TIPO, EXPRESSA OU
+IMPLICITA, INCLUINDO, MAS NAO SE LIMITANDO AS GARANTIAS DE COMERCIALIZACAO,
+ADEQUACAO A UMA FINALIDADE ESPECIFICA E NAO VIOLACAO. EM NENHUMA HIPOTESE OS
+AUTORES OU TITULARES DO COPYRIGHT SERAO RESPONSAVEIS POR QUALQUER REIVINDICACAO,
+DANOS OU OUTRA RESPONSABILIDADE, SEJA EM ACAO DE CONTRATO, ATO ILICITO OU DE OUTRA
+FORMA, DECORRENTE DE, OU EM CONEXAO COM O SOFTWARE OU O USO OU OUTRAS NEGOCIACOES
+NO SOFTWARE.

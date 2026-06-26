@@ -3,16 +3,16 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Planejamento Geometrico de Implantes Capilares</title>
-  <link rel="icon" href="assets/icons/favicon.ico" sizes="any">
-  <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
-  <link rel="icon" href="assets/icons/favicon-96x96.png" type="image/png" sizes="96x96">
+  <title>Planejamento Geometrico de Densidades e Implantacoes</title>
+  <!-- Sem favicon: favicon vazio (data:,) declara explicitamente "nenhum icone", evitando
+       o request automatico de /favicon.ico (e o 404). -->
+  <link rel="icon" href="data:,">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=20260623-batch5-1" />
+  <link rel="stylesheet" href="css/styles.css?v=20260626-generic-1" />
 </head>
 <body>
   <div class="app">
@@ -99,13 +99,14 @@
           <button class="small-button" id="validationBtn" title="Validar as medições: alertas por área e razão cm²/Mpx² entre apoio e principal"><i data-lucide="clipboard-check"></i><span>Validação</span></button>
           <button class="small-button" id="autoSaveBtn" title="Ativar ou desativar salvamento automatico"><i data-lucide="refresh-cw"></i><span>Salvamento automático</span></button>
           <button class="small-button" id="settingsBtn" title="Abrir configurações"><i data-lucide="settings"></i><span>Configurações</span></button>
+          <button class="small-button" id="aboutBtn" title="Sobre a ferramenta, contato e termos de uso"><i data-lucide="info"></i><span>Sobre</span></button>
         </div>
 
         <!-- Tamanho padrão (cm) de novas escalas. Sem UI própria: a medida real é
              confirmada/editada no modal ao concluir ou dar duplo clique na escala. -->
         <input id="scaleSizeInput" type="hidden" value="2">
         <input id="imageFileInput" type="file" accept="image/*,.heic,.heif" multiple hidden>
-        <input id="loadFileInput" type="file" accept="application/json,.json" hidden>
+        <input id="loadFileInput" type="file" accept="application/gzip,.gz" hidden>
       </div>
       <div class="zoom-controls" id="zoomControls" aria-label="Zoom" hidden>
         <button class="small-button" id="zoomInBtn" title="Aproximar"><i data-lucide="zoom-in"></i></button>
@@ -129,7 +130,7 @@
         <div class="density-metrics">
           <div class="metric"><span>Pontos</span><strong id="densityCount">0</strong></div>
           <div class="metric"><span>Amostra cm&sup2;</span><strong id="densityArea">4,00</strong></div>
-          <div class="metric"><span>Fios/cm&sup2;</span><strong id="densityValue">0</strong></div>
+          <div class="metric"><span>um/cm&sup2;</span><strong id="densityValue">0</strong></div>
         </div>
         <label class="density-contrast" for="densityContrastInput">
           <span class="density-contrast-label">Contraste <button class="density-contrast-reset" id="densityContrastReset" type="button" title="Voltar ao contraste normal">Normal</button></span>
@@ -179,18 +180,18 @@
             </label>
             <label class="checkbox-row" for="currentHairDotsVisibleInput">
               <input id="currentHairDotsVisibleInput" type="checkbox">
-              <span>Exibir fios existentes (densidade atual)</span>
+              <span>Exibir unidades existentes (densidade atual)</span>
             </label>
             <label class="color-row" for="currentHairDotColorInput">
-              <span>Cor dos fios existentes</span>
+              <span>Cor das unidades existentes</span>
               <input id="currentHairDotColorInput" type="color" value="#8f98a6">
             </label>
             <label class="checkbox-row" for="implantHairDotsVisibleInput">
               <input id="implantHairDotsVisibleInput" type="checkbox">
-              <span>Exibir fios a implantar</span>
+              <span>Exibir unidades a implantar</span>
             </label>
             <label class="color-row" for="implantHairDotColorInput">
-              <span>Cor dos fios a implantar</span>
+              <span>Cor das unidades a implantar</span>
               <input id="implantHairDotColorInput" type="color" value="#8f98a6">
             </label>
           </div>
@@ -198,7 +199,7 @@
             <h3>Ferramenta Pontos*</h3>
             <label class="number-row" for="pointTraceStarAngleInput">
               <span>Ângulo de canto vivo <span style="display:block;color:var(--faint);font-weight:600;text-transform:none;letter-spacing:0">dobra (em graus) acima da qual o vértice quebra a curva em um novo traço</span></span>
-              <input id="pointTraceStarAngleInput" type="number" min="5" max="175" step="1" value="45" />
+              <input id="pointTraceStarAngleInput" type="number" min="5" max="175" step="1" />
             </label>
             <label class="number-row" for="pointTraceStarMinSegmentInput">
               <span>Distância mínima entre pontos <span style="display:block;color:var(--faint);font-weight:600;text-transform:none;letter-spacing:0">pontos mais próximos que isto (px na tela) não disparam o canto vivo</span></span>
@@ -232,6 +233,38 @@
           <div class="dialog-actions settings-footer">
             <button class="small-button" id="settingsCancelBtn" type="button"><span>Cancelar</span></button>
             <button class="small-button primary-button" id="settingsSaveBtn" type="button"><i data-lucide="check"></i><span>Salvar</span></button>
+          </div>
+        </div>
+      </div>
+      <div class="settings-modal" id="aboutModal" hidden>
+        <div class="settings-dialog about-dialog" role="dialog" aria-modal="true" aria-labelledby="aboutTitle">
+          <header>
+            <h2 id="aboutTitle">Sobre</h2>
+            <button class="small-button icon-only" id="aboutCloseBtn" type="button" title="Fechar"><i data-lucide="x"></i></button>
+          </header>
+          <div class="settings-scroll about-content">
+            <p class="about-name">Planejamento Geom&eacute;trico de Regulariza&ccedil;&atilde;o de Densidade</p>
+            <p>Ferramenta para medir &aacute;reas sobre imagens, calcular densidades e planejar a <strong>regulariza&ccedil;&atilde;o de densidade</strong> &mdash; aplic&aacute;vel a qualquer dom&iacute;nio em que se mede e se regulariza densidade.</p>
+            <div class="settings-section">
+              <h3>Vers&atilde;o</h3>
+              <p id="aboutVersion">&mdash;</p>
+            </div>
+            <div class="settings-section">
+              <h3>Contato</h3>
+              <p><a href="mailto:guto202@gmail.com">guto202@gmail.com</a></p>
+            </div>
+            <div class="settings-section">
+              <h3>Termos de uso</h3>
+              <p>Uso <strong>gratuito</strong>, inclusive <strong>comercial</strong>. Fornecida <strong>&ldquo;COMO EST&Aacute;&rdquo; (as is)</strong>, <strong>sem garantias</strong> de qualquer tipo. O uso &eacute; de inteira responsabilidade do usu&aacute;rio. &mdash; <a href="LICENSE-pt-BR.txt" target="_blank" rel="noopener">Ler os termos completos</a></p>
+            </div>
+            <div class="settings-section">
+              <h3>Licen&ccedil;a</h3>
+              <p>Distribu&iacute;do sob a <a href="LICENSE-pt-BR.txt" target="_blank" rel="noopener">Licen&ccedil;a MIT (em portugu&ecirc;s)</a> &middot; <a href="LICENSE" target="_blank" rel="noopener">texto original (ingl&ecirc;s)</a>.</p>
+              <p class="about-copyright">&copy; 2026 guto202@gmail.com</p>
+            </div>
+          </div>
+          <div class="dialog-actions settings-footer">
+            <button class="small-button primary-button" id="aboutOkBtn" type="button"><i data-lucide="check"></i><span>Fechar</span></button>
           </div>
         </div>
       </div>
@@ -319,7 +352,7 @@
           </header>
           <p id="areaRecalcText">A &aacute;rea foi alterada. O que deseja fazer?</p>
           <div class="dialog-actions">
-            <button class="small-button" id="areaRecalcKeepUnitsBtn" type="button"><span>Recalcular Densidade Final (mant&eacute;m unidades foliculares a implantar)</span></button>
+            <button class="small-button" id="areaRecalcKeepUnitsBtn" type="button"><span>Recalcular Densidade Final (mant&eacute;m unidades a implantar)</span></button>
             <button class="small-button primary-button" id="areaRecalcKeepDensityBtn" type="button"><i data-lucide="check"></i><span>Recalcular Unidades a Implantar (mant&eacute;m Densidade Final)</span></button>
           </div>
         </div>
@@ -412,7 +445,7 @@
     <aside>
       <div class="summary">
         <div class="metric"><span>Areas</span><strong id="areaCount">0</strong></div>
-        <div class="metric"><span>cm2</span><strong id="totalCm2">0</strong></div>
+        <div class="metric"><span>cm&sup2;</span><strong id="totalCm2">0</strong></div>
         <div class="metric"><span>Unidades</span><strong id="totalHairs">0</strong></div>
       </div>
 
@@ -421,38 +454,39 @@
       </div>
     </aside>
   </div>
-  <script src="js/config.js?v=20260609-cleanup-1"></script>
+  <script src="js/config.js?v=20260626-anglecfg-1"></script>
+  <script src="js/version.js?v=20260626-version-1"></script>
   <script src="js/paper-loader.js?v=20260601-pencil-loop-fix"></script>
-  <script src="js/utils.js?v=20260615-final-density-2"></script>
+  <script src="js/utils.js?v=20260626-gzip-1"></script>
   <script src="js/performance-monitor.js?v=20260614-loaf-1"></script>
   <script src="js/heic-converter.js?v=20260614-heic-3"></script>
   <script src="js/geometry-utils.js?v=20260609-cleanup-1"></script>
-  <script src="js/app-state.js?v=20260625-hairdots-off-1"></script>
+  <script src="js/app-state.js?v=20260626-anglecfg-1"></script>
   <script src="js/render-layers.js?v=20260602-projections-1"></script>
-  <script src="js/toolbar-tabs.js?v=20260622-menu-flat-1"></script>
-  <script src="js/io-state.js?v=20260623-page-isolation-2"></script>
+  <script src="js/toolbar-tabs.js?v=20260626-aboutfile-1"></script>
+  <script src="js/io-state.js?v=20260626-anglecfg-1"></script>
   <script src="js/area-model.js?v=20260623-skin-hue-1"></script>
   <script src="js/local-prefs.js?v=20260610-split-divider-1"></script>
   <script src="js/path-styles.js?v=20260623-batch5-1"></script>
   <script src="js/cursor-loupe-controller.js?v=20260622-loupe-edit-2"></script>
-  <script src="js/io-controller.js?v=20260623-batch7-1"></script>
+  <script src="js/io-controller.js?v=20260626-gzip-1"></script>
   <script src="js/scale-controller.js?v=20260624-supportclip-1"></script>
   <script src="js/viewport-controller.js?v=20260622-edit-trace-1"></script>
   <script src="js/navigation-controller.js?v=20260609-navigation-1"></script>
   <script src="js/floating-card.js?v=20260601-refactor-8"></script>
-  <script src="js/reference-image-controller.js?v=20260624-selpattern-1"></script>
-  <script src="js/diagnostic-controller.js?v=20260613-perf-diag-1"></script>
-  <script src="js/report-controller.js?v=20260623-batch6-1"></script>
-  <script src="js/area-visual-controller.js?v=20260624-supportclip-1"></script>
+  <script src="js/reference-image-controller.js?v=20260626-undoclip-1"></script>
+  <script src="js/diagnostic-controller.js?v=20260626-diagstate-1"></script>
+  <script src="js/report-controller.js?v=20260626-generic-1"></script>
+  <script src="js/area-visual-controller.js?v=20260626-generic-1"></script>
   <script src="js/stroke-geometry-controller.js?v=20260625-cutter-extend-1"></script>
-  <script src="js/area-panel-controller.js?v=20260623-batch-recalc-1"></script>
+  <script src="js/area-panel-controller.js?v=20260626-generic-1"></script>
   <script src="js/auto-trace-controller.js?v=20260611-autotrace-1"></script>
-  <script src="js/density-sample-controller.js?v=20260612-batch-1"></script>
-  <script src="js/drawing-tools-controller.js?v=20260626-batchpaint-1"></script>
-  <script src="js/event-bindings.js?v=20260623-noctx-1"></script>
-  <script src="js/history-controller.js?v=20260623-page-isolation-2"></script>
-  <script src="js/projection-controller.js?v=20260624-projscale-1"></script>
+  <script src="js/density-sample-controller.js?v=20260626-generic-1"></script>
+  <script src="js/drawing-tools-controller.js?v=20260626-anglecfg-1"></script>
+  <script src="js/event-bindings.js?v=20260626-anglecfg-1"></script>
+  <script src="js/history-controller.js?v=20260626-undoclip-1"></script>
+  <script src="js/projection-controller.js?v=20260626-visualnull-1"></script>
   <script src="js/validation-controller.js?v=20260623-batch5-1"></script>
-  <script src="js/app.js?v=20260626-batchpaint-1"></script>
+  <script src="js/app.js?v=20260626-diagstate-1"></script>
 </body>
 </html>

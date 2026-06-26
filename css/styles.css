@@ -1196,6 +1196,27 @@ input[type="range"]::-moz-range-thumb {
   background: var(--surface-2);
 }
 
+/* Modal "Sobre" (menu Ajuda): reaproveita .settings-dialog/.settings-scroll. */
+#aboutModal .settings-dialog {
+  max-height: min(560px, calc(100vh - 80px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+#aboutModal .settings-dialog header { flex: 0 0 auto; }
+.about-content {
+  padding: 4px 18px 12px;
+  line-height: 1.5;
+}
+.about-content p { margin: 8px 0; color: var(--ink-2); }
+.about-name {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+.about-content a { color: var(--accent); }
+.about-copyright { color: var(--faint); font-size: 0.85rem; }
+
 .image-picker-dialog {
   width: min(520px, calc(100vw - 48px));
 }
@@ -2531,7 +2552,7 @@ input[type="number"]:focus,
   margin-bottom: 5px;
   line-height: 1.25;
   /* Aperta o espacamento para o nome + unidade entre parenteses caberem numa
-     linha (ex.: "Densidade atual (uf/cm²)") sem a unidade quebrar para baixo. */
+     linha (ex.: "Densidade atual (um/cm²)") sem a unidade quebrar para baixo. */
   letter-spacing: 0.01em;
 }
 
